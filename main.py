@@ -1,4 +1,5 @@
 import mysql.connector
+import datetime
 
 HOST="LOCALHOST"
 USER="root"
@@ -16,12 +17,66 @@ class Banco:
         )
         self.cursor= self.conn.cursor()
 
-    def adicionarTarefa(self):
+    def adicionar_tarefa(self, tarefa):
+        insertTarefa =(
+            "INSERT INTO tarefa "
+               "("
+                   "id_usuario,"
+                    "categoria,"
+                    "prioridade,"
+                    "estado,"
+                    "descricao,"
+                    "data_prazo,"
+                    "data_cricao"
+               ") "
+            "VALUES "
+                "("
+                    "%(id_usuario)d,"
+                    "%(categoria)s,"
+                    "%(prioridade)s,"
+                    "%(estado)s,"
+                    "%(descricao)s,"
+                    "%(data_prazo)s,"
+                    "%(data_criacao)s"
+                ");"
+        )
 
-    def adicionarUsuario(self):
+        tarefaInformacao= {
+            'id_usuario' = tarefa.id_usuario,
+            'categoria' = tarefa.categoria,
+            'prioridade' = tarefa.prioridade,
+            'estado' = tarefa.estado,
+            'descricao' = tarefa.descricao,
+            'data_prazo' = tarefa.data_prazo,
+            'data_criacao' = tarefa.data_criacao
+        }
 
-    def validarUsuario(self, usuario, senha):
 
+    def adicionar_usuario(self, usuario, senha):
+
+        insertUsuario="INSERT INTO usuario (nome, senha) VALUES (%(nome)s, %(senha)s)"
+
+        informacaoUsuario={
+            'nome':usuario.nome,
+            'senha':senha
+        }
+        self.cursor.execute(insertUsuario,informacaoUsuario)
+
+    def validar_usuario(self, usuario, senha):
+        selectUserMatching="SELECT * FROM usuario WHERE nome=%s AND senha=%s"
+
+    def close_conection(self):
+        self.conn.close()
+        self.cursor.close()
+
+    def open_conection(self):
+        self.conn = mysql.connector.connect(
+            host=HOST,
+            user=USER,
+            password=PASSWORD,
+            database=DATABASE
+        )
+        self.cursor=self.conn.cursor()
 
 
 class Tarefa:
@@ -47,3 +102,8 @@ class Usuario:
     def __init__(self, id, nome):
         self.id = id
         self.nome = nome
+
+
+db=Banco()
+
+db.close_conection()
