@@ -45,8 +45,9 @@ class Usuario:
 
 class Banco:
 
-    def __init__(self):
-        self.conn = mysql.connector.connect(**config)
+    def __init__(self, configs):
+        self.config=configs
+        self.conn = mysql.connector.connect(**configs)
         self.cursor = self.conn.cursor()
 
     def adicionar_tarefa(self, tarefa: Tarefa):
@@ -182,13 +183,14 @@ class Banco:
         self.cursor.close()
 
     def open_conection(self):
-        self.conn = mysql.connector.connect(**config)
+        self.conn = mysql.connector.connect(**self.config)
         self.cursor = self.conn.cursor()
 
 user = Usuario(0, "cavalo")
 senha = "1234"
 
-db = Banco()
+
+db = Banco(config)
 
 print(db.adicionar_usuario(user, senha, "BIXO VEIO"))
 
