@@ -2,13 +2,14 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import mysql.connector
 
+# Configuração do banco de dados
 config = {
     'host': "localhost",
     'user': "root",
     'password': "0000",
     'database': "sistematarefa"
 }
-a
+
 class Banco:
     def __init__(self, configs):
         self.config = configs
@@ -59,6 +60,7 @@ class Banco:
 
 class Aplicacao:
     def __init__(self, root):
+        self.id_tarefa = None
         self.root = root
         self.root.title("Sistema de Tarefas")
         self.banco = Banco(config)
@@ -86,16 +88,16 @@ class Aplicacao:
         tk.Label(self.root, text="Cadastro de Usuário", font=("Arial", 18)).pack(pady=10)
 
         tk.Label(self.root, text="Nome:").pack()
-        entry_nome = tk.Entry(self.root)
-        entry_nome.pack()
+        self.entry_nome = tk.Entry(self.root)
+        self.entry_nome.pack()
 
         tk.Label(self.root, text="Senha:").pack()
-        entry_senha = tk.Entry(self.root, show="*")
-        entry_senha.pack()
+        self.entry_senha = tk.Entry(self.root, show="*")
+        self.entry_senha.pack()
 
         def cadastrar():
-            nome = entry_nome.get()
-            senha = entry_senha.get()
+            nome = self.entry_nome.get()
+            senha = self.entry_senha.get()
 
             if nome and senha:
                 try:
@@ -153,7 +155,7 @@ class Aplicacao:
             self.tree.insert("", "end", values=tarefa)
 
     def tela_adicionar_tarefa(self):
-        self.tela_formulario_tarefa("Adicionar Tarefa", self.banco.adicionar_tarefa)
+        self.tela_formulario_tarefa("Adicionar Tarefa")
 
     def tela_editar_tarefa(self):
         selecionado = self.tree.selection()
@@ -161,8 +163,8 @@ class Aplicacao:
             messagebox.showwarning("Atenção", "Selecione uma tarefa para editar.")
             return
 
-        id_tarefa = self.tree.item(selecionado[0], "values")[0]
-        self.tela_formulario_tarefa("Editar Tarefa", lambda *args: self.banco.editar_tarefa(id_tarefa, *args))
+        self.id_tarefa = self.tree.item(selecionado[0], "values")[0]
+        self.tela_formulario_tarefa("Editar Tarefa")
 
     def apagar_tarefa(self):
         selecionado = self.tree.selection()
@@ -178,7 +180,7 @@ class Aplicacao:
         except Exception as e:
             messagebox.showerror("Erro", f"Erro ao apagar tarefa: {e}")
 
-    def tela_formulario_tarefa(self, titulo, funcao):
+    def tela_formulario_tarefa(self, titulo):
         self.limpar_tela()
 
         tk.Label(self.root, text=titulo, font=("Arial", 18)).pack(pady=10)
@@ -192,11 +194,15 @@ class Aplicacao:
         entry_prazo.pack()
 
         tk.Label(self.root, text="Prioridade:").pack()
-        entry_prioridade = tk.Entry(self.root)
+        prioridades=["urgente", "importante", "média", "baixa", "irrelevante"]
+        entry_prioridade = ttk.Combobox(self.root, values=prioridades)
+        entry_prioridade.set(prioridades[-1])
         entry_prioridade.pack()
 
         tk.Label(self.root, text="Estado:").pack()
-        entry_estado = tk.Entry(self.root)
+        estados=["pendente", "completa", "espera", "atribuída"]
+        entry_estado = ttk.Combobox(self.root, values=estados)
+        entry_estado.set(estados[-1])
         entry_estado.pack()
 
         def salvar():
@@ -206,7 +212,10 @@ class Aplicacao:
             estado = entry_estado.get()
 
             try:
-                funcao(self.usuario_id, descricao, data_prazo, prioridade, estado)
+                if titulo == "Editar Tarefa":
+                    self.banco.editar_tarefa(self.id_tarefa, descricao, data_prazo, prioridade, estado)
+                else:
+                    self.banco.adicionar_tarefa(self.usuario_id, descricao, data_prazo, prioridade, estado)
                 messagebox.showinfo("Sucesso", f"{titulo} realizada com sucesso!")
                 self.tela_principal()
             except Exception as e:
