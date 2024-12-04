@@ -10,7 +10,6 @@ config = {
     'database': "sistematarefa"
 }
 
-k
 class Banco:
     def __init__(self, configs):
         self.config = configs
