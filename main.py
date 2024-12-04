@@ -1,7 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import mysql.connector
-import datetime
 
 config = {
     'host': "localhost",
@@ -35,6 +34,25 @@ class Banco:
         self.cursor.execute(query, (id_usuario, descricao, data_prazo, prioridade, estado))
         self.conn.commit()
 
+    def editar_tarefa(self, id_tarefa, descricao, data_prazo, prioridade, estado):
+        query = """
+        UPDATE tarefa
+        SET descricao=%s, data_prazo=%s, prioridade=%s, estado=%s
+        WHERE id=%s;
+        """
+        self.cursor.execute(query, (descricao, data_prazo, prioridade, estado, id_tarefa))
+        self.conn.commit()
+
+    def apagar_tarefa(self, id_tarefa):
+        query = "DELETE FROM tarefa WHERE id=%s;"
+        self.cursor.execute(query, (id_tarefa,))
+        self.conn.commit()
+
+    def cadastrar_usuario(self, nome, senha):
+        query = "INSERT INTO usuario (nome, senha, ativado) VALUES (%s, %s, TRUE);"
+        self.cursor.execute(query, (nome, senha))
+        self.conn.commit()
+
     def close(self):
         self.cursor.close()
         self.conn.close()
@@ -60,6 +78,37 @@ class Aplicacao:
         self.entry_senha.pack()
 
         tk.Button(self.root, text="Entrar", command=self.fazer_login).pack(pady=10)
+        tk.Button(self.root, text="Cadastrar", command=self.tela_cadastro).pack()
+
+    def tela_cadastro(self):
+        self.limpar_tela()
+
+        tk.Label(self.root, text="Cadastro de Usuário", font=("Arial", 18)).pack(pady=10)
+
+        tk.Label(self.root, text="Nome:").pack()
+        entry_nome = tk.Entry(self.root)
+        entry_nome.pack()
+
+        tk.Label(self.root, text="Senha:").pack()
+        entry_senha = tk.Entry(self.root, show="*")
+        entry_senha.pack()
+
+        def cadastrar():
+            nome = entry_nome.get()
+            senha = entry_senha.get()
+
+            if nome and senha:
+                try:
+                    self.banco.cadastrar_usuario(nome, senha)
+                    messagebox.showinfo("Sucesso", "Usuário cadastrado com sucesso!")
+                    self.tela_login()
+                except Exception as e:
+                    messagebox.showerror("Erro", f"Erro ao cadastrar usuário: {e}")
+            else:
+                messagebox.showwarning("Atenção", "Preencha todos os campos!")
+
+        tk.Button(self.root, text="Cadastrar", command=cadastrar).pack(pady=10)
+        tk.Button(self.root, text="Voltar", command=self.tela_login).pack()
 
     def fazer_login(self):
         usuario = self.entry_usuario.get()
@@ -77,7 +126,8 @@ class Aplicacao:
 
         tk.Label(self.root, text="Tarefas", font=("Arial", 18)).pack(pady=10)
 
-        self.tree = ttk.Treeview(self.root, columns=("Descrição", "Prazo", "Prioridade", "Estado"), show="headings")
+        self.tree = ttk.Treeview(self.root, columns=("ID", "Descrição", "Prazo", "Prioridade", "Estado"), show="headings")
+        self.tree.heading("ID", text="ID")
         self.tree.heading("Descrição", text="Descrição")
         self.tree.heading("Prazo", text="Prazo")
         self.tree.heading("Prioridade", text="Prioridade")
@@ -90,6 +140,8 @@ class Aplicacao:
         frame_botoes.pack(pady=10)
 
         tk.Button(frame_botoes, text="Adicionar Tarefa", command=self.tela_adicionar_tarefa).pack(side="left", padx=5)
+        tk.Button(frame_botoes, text="Editar Tarefa", command=self.tela_editar_tarefa).pack(side="left", padx=5)
+        tk.Button(frame_botoes, text="Apagar Tarefa", command=self.apagar_tarefa).pack(side="left", padx=5)
         tk.Button(frame_botoes, text="Sair", command=self.tela_login).pack(side="left", padx=5)
 
     def carregar_tarefas(self):
@@ -98,12 +150,38 @@ class Aplicacao:
 
         tarefas = self.banco.selecionar_tarefas(self.usuario_id)
         for tarefa in tarefas:
-            self.tree.insert("", "end", values=tarefa[1:])
+            self.tree.insert("", "end", values=tarefa)
 
     def tela_adicionar_tarefa(self):
+        self.tela_formulario_tarefa("Adicionar Tarefa", self.banco.adicionar_tarefa)
+
+    def tela_editar_tarefa(self):
+        selecionado = self.tree.selection()
+        if not selecionado:
+            messagebox.showwarning("Atenção", "Selecione uma tarefa para editar.")
+            return
+
+        id_tarefa = self.tree.item(selecionado[0], "values")[0]
+        self.tela_formulario_tarefa("Editar Tarefa", lambda *args: self.banco.editar_tarefa(id_tarefa, *args))
+
+    def apagar_tarefa(self):
+        selecionado = self.tree.selection()
+        if not selecionado:
+            messagebox.showwarning("Atenção", "Selecione uma tarefa para apagar.")
+            return
+
+        id_tarefa = self.tree.item(selecionado[0], "values")[0]
+        try:
+            self.banco.apagar_tarefa(id_tarefa)
+            messagebox.showinfo("Sucesso", "Tarefa apagada com sucesso!")
+            self.carregar_tarefas()
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao apagar tarefa: {e}")
+
+    def tela_formulario_tarefa(self, titulo, funcao):
         self.limpar_tela()
 
-        tk.Label(self.root, text="Nova Tarefa", font=("Arial", 18)).pack(pady=10)
+        tk.Label(self.root, text=titulo, font=("Arial", 18)).pack(pady=10)
 
         tk.Label(self.root, text="Descrição:").pack()
         entry_descricao = tk.Entry(self.root)
@@ -121,20 +199,20 @@ class Aplicacao:
         entry_estado = tk.Entry(self.root)
         entry_estado.pack()
 
-        def adicionar_tarefa():
+        def salvar():
             descricao = entry_descricao.get()
             data_prazo = entry_prazo.get()
             prioridade = entry_prioridade.get()
             estado = entry_estado.get()
 
             try:
-                self.banco.adicionar_tarefa(self.usuario_id, descricao, data_prazo, prioridade, estado)
-                messagebox.showinfo("Sucesso", "Tarefa adicionada com sucesso!")
+                funcao(self.usuario_id, descricao, data_prazo, prioridade, estado)
+                messagebox.showinfo("Sucesso", f"{titulo} realizada com sucesso!")
                 self.tela_principal()
             except Exception as e:
-                messagebox.showerror("Erro", f"Erro ao adicionar tarefa: {e}")
+                messagebox.showerror("Erro", f"Erro ao salvar tarefa: {e}")
 
-        tk.Button(self.root, text="Salvar", command=adicionar_tarefa).pack(pady=10)
+        tk.Button(self.root, text="Salvar", command=salvar).pack(pady=10)
         tk.Button(self.root, text="Voltar", command=self.tela_principal).pack()
 
     def limpar_tela(self):
@@ -143,6 +221,6 @@ class Aplicacao:
 
 if __name__ == "__main__":
     root = tk.Tk()
-    root.geometry("600x400")
+    root.geometry("700x500")
     app = Aplicacao(root)
     root.mainloop()
