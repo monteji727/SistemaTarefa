@@ -9,7 +9,7 @@ config = {
     'password': "0000",
     'database': "sistematarefa"
 }
-
+\
 class Banco:
     def __init__(self, configs):
         self.config = configs
