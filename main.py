@@ -1,4 +1,5 @@
 import tkinter as tk
+from datetime import datetime
 from tkinter import ttk, messagebox
 import mysql.connector
 
@@ -26,6 +27,11 @@ class Banco:
         query = "SELECT id, descricao, data_prazo, prioridade, estado FROM tarefa WHERE id_usuario=%s;"
         self.cursor.execute(query, (id_usuario,))
         return self.cursor.fetchall()
+
+    def selecionar_tarefa(self, id_tarefa):
+        query = "SELECT id, descricao, data_prazo, prioridade, estado FROM tarefa WHERE id=%s;"
+        self.cursor.execute(query, (id_tarefa,))
+        return self.cursor.fetchone()
 
     def adicionar_tarefa(self, id_usuario, descricao, data_prazo, prioridade, estado):
         query = """
@@ -205,13 +211,26 @@ class Aplicacao:
         entry_estado.set(estados[-1])
         entry_estado.pack()
 
+        if titulo == "Editar Tarefa":
+            tarefa = self.banco.selecionar_tarefa(self.id_tarefa)
+            entry_descricao.insert(0, tarefa[1])  # Description
+            entry_estado.insert(0, tarefa[4])     # State
+            entry_prioridade.insert(0, tarefa[3]) # Priority
+            entry_prazo.insert(0, tarefa[2])
+
         def salvar():
-            descricao = entry_descricao.get()
             data_prazo = entry_prazo.get()
+            descricao = entry_descricao.get()
             prioridade = entry_prioridade.get()
             estado = entry_estado.get()
 
             try:
+                date_prazo_obj = datetime.strptime(data_prazo, "%Y-%m-%d")
+                data_now = datetime.now()
+                if date_prazo_obj<data_now:
+                    messagebox.showerror("Erro", "Data inválida: coloque uma data posterior à atual!")
+                    return
+
                 if titulo == "Editar Tarefa":
                     self.banco.editar_tarefa(self.id_tarefa, descricao, data_prazo, prioridade, estado)
                 else:
@@ -230,6 +249,6 @@ class Aplicacao:
 
 if __name__ == "__main__":
     root = tk.Tk()
-    root.geometry("700x500")
+    root.geometry("1000x500")
     app = Aplicacao(root)
     root.mainloop()
